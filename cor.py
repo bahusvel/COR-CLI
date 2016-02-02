@@ -48,7 +48,7 @@ def newModule(name, language, language_url):
 		if language in KNOWNLANGUAGES:
 			lurl = KNOWNLANGUAGES[language]
 			break
-		lurl = click.prompt("Please enter language-url: ")
+		lurl = click.prompt("Please enter language-url")
 	gc.gitaddsubmodule(lurl, pathname="cor")
 	# initialize .cor directory
 
@@ -81,10 +81,9 @@ def remove(name):
 def sync():
 	commited = False
 	if check_for_cor():
-		print(gc.isdiff())
 		if gc.isdiff():
-			if click.confirm("You have modified the module do you want to commit? [y/n]"):
-				msg = click.prompt("Please enter a commit message:")
+			if click.confirm("You have modified the module do you want to commit?"):
+				msg = click.prompt("Please enter a commit message")
 				gc.gitupsync(msg)
 				commited = True
 		gc.gitpull()
@@ -96,7 +95,7 @@ def sync():
 
 
 @click.command()
-def upgrade(editable):
+def upgrade():
 	if not os.path.exists(CORCLISTORAGE):
 		os.mkdir(CORCLISTORAGE)
 	if not os.path.exists(CORCLISTORAGE+"/cli"):
