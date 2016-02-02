@@ -86,7 +86,7 @@ def sync():
 
 @click.command()
 def upgrade():
-	pass
+	gc.gitpull()
 
 @click.command()
 def publish():

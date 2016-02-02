@@ -20,6 +20,10 @@ def gitinit():
 	os.system("git init")
 
 
+def gitpull():
+	os.system("git pull")
+
+
 def gitsync():
 	os.system("git add .")
 	os.system("git commit -a")
