@@ -86,7 +86,7 @@ def sync():
 
 
 @click.command()
-def upgrade():
+def upgrade(editable):
 	if not os.path.exists(CORCLISTORAGE):
 		os.mkdir(CORCLISTORAGE)
 	if not os.path.exists(CORCLISTORAGE+"/cli"):
@@ -111,6 +111,11 @@ def get_module(url):
 		pass
 	gc.gitclone(url)
 
+
+@click.command()
+@click.argument("commands", nargs=-1)
+def git(commands):
+	os.system("git " + " ".join(commands))
 
 def new_cor_entity(name):
 	os.mkdir(name)
@@ -153,6 +158,7 @@ cor.add_command(sync)
 cor.add_command(upgrade)
 cor.add_command(publish)
 cor.add_command(remove)
+cor.add_command(git)
 
 if __name__ == '__main__':
 	cor()
