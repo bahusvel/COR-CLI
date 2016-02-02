@@ -1,9 +1,0 @@
-cor.py
-fscontroller.py
-gitcontroller.py
-cor.egg-info/PKG-INFO
-cor.egg-info/SOURCES.txt
-cor.egg-info/dependency_links.txt
-cor.egg-info/entry_points.txt
-cor.egg-info/requires.txt
-cor.egg-info/top_level.txt
