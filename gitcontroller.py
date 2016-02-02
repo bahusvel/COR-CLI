@@ -1,8 +1,11 @@
 import os
 
 
-def gitclone(url):
-	os.system("git clone --recursive " + url)
+def gitclone(url, aspath=None):
+	if aspath is None:
+		os.system("git clone --recursive " + url)
+	else:
+		os.system("git clone --recursive " + url + " " + aspath)
 
 
 def gitaddsubmodule(url, pathname=None):

@@ -12,6 +12,7 @@ KNOWNLANGUAGES = {
 
 CORFRAMEWORK = "https://github.com/bahusvel/COR-Framework"
 CORCLI = "https://github.com/bahusvel/COR-CLI.git"
+CORCLISTORAGE = click.get_app_dir("COR CLI")
 
 
 class TYPE:
@@ -86,7 +87,14 @@ def sync():
 
 @click.command()
 def upgrade():
+	if not os.path.exists(CORCLISTORAGE):
+		os.mkdir(CORCLISTORAGE)
+	if not os.path.exists(CORCLISTORAGE+"/cli"):
+		os.chdir(CORCLISTORAGE)
+		gc.gitclone(CORCLI, aspath="cli")
+	os.chdir(CORCLISTORAGE+"/cli")
 	gc.gitpull()
+	os.system("pip install --upgrade .")
 
 @click.command()
 def publish():
