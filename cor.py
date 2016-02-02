@@ -79,8 +79,18 @@ def remove(name):
 
 @click.command()
 def sync():
+	commited = False
 	if check_for_cor():
-		pass
+		print(gc.isdiff())
+		if gc.isdiff():
+			if click.confirm("You have modified the module do you want to commit? [y/n]"):
+				msg = click.prompt("Please enter a commit message:")
+				gc.gitupsync(msg)
+				commited = True
+		gc.gitpull()
+		if commited:
+			gc.gitpush()
+
 	else:
 		click.secho("Not a COR-Entity (Framework, Module, Recipe)", err=True)
 
@@ -116,6 +126,7 @@ def get_module(url):
 @click.argument("commands", nargs=-1)
 def git(commands):
 	os.system("git " + " ".join(commands))
+
 
 def new_cor_entity(name):
 	os.mkdir(name)

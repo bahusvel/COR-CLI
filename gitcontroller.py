@@ -1,5 +1,5 @@
 import os
-
+import subprocess
 
 def gitclone(url, aspath=None):
 	if aspath is None:
@@ -27,7 +27,15 @@ def gitpull():
 	os.system("git pull")
 
 
-def gitsync():
-	os.system("git add .")
-	os.system("git commit -a")
+def isdiff():
+	diff = subprocess.check_output(["git", "diff", "--shortstat"], universal_newlines=True)
+	return diff != ""
+
+
+def gitpush():
 	os.system("git push")
+
+
+def gitupsync(message):
+	os.system("git add .")
+	os.system("git commit -a -m \"" + message + "\"")
