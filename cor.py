@@ -1,5 +1,5 @@
 import click
-import fscontroller as fsc
+import fscontroller as fs
 import gitcontroller as gc
 import os
 import shutil
