@@ -3,6 +3,7 @@ import fscontroller as fsc
 import gitcontroller as gc
 import os
 import shutil
+import json
 
 KNOWNLANGUAGES = {
 	"Swift": "https://github.com/bahusvel/COR-Framework-Swift.git",
@@ -12,7 +13,10 @@ KNOWNLANGUAGES = {
 
 CORFRAMEWORK = "https://github.com/bahusvel/COR-Framework"
 CORCLI = "https://github.com/bahusvel/COR-CLI.git"
+CORINDEX = "https://github.com/bahusvel/COR-Index.git"
 CORCLISTORAGE = click.get_app_dir("COR CLI")
+STORAGEINDEX = CORCLISTORAGE+"/index"
+STORAGEMODULES = STORAGEINDEX+"/modules"
 
 
 class TYPE:
@@ -95,14 +99,40 @@ def sync():
 
 
 @click.command()
-def upgrade():
+@click.option("--name", prompt=True)
+@click.option("--searchmethod", type=click.Choice(["QUICK", "FULL"]))
+def module_search(name, searchmethod):
+	if searchmethod is None:
+		searchmethod = "QUICK"
+	modules = search_backend(name, entity_type=TYPE.MODULE, searchtype=searchmethod)
+	for module in modules:
+		with open(STORAGEMODULES+"/"+module, "r") as modfile:
+			moddesc = json.loads(modfile.read())
+			click.secho("{} @ {}".format(moddesc["name"], moddesc["repo"]))
+
+
+@click.command()
+def update():
 	if not os.path.exists(CORCLISTORAGE):
 		os.mkdir(CORCLISTORAGE)
-	if not os.path.exists(CORCLISTORAGE+"/cli"):
+	if not os.path.exists(CORCLISTORAGE+"/index"):
 		os.chdir(CORCLISTORAGE)
-		gc.gitclone(CORCLI, aspath="cli")
-	os.chdir(CORCLISTORAGE+"/cli")
-	gc.gitpull()
+		gc.gitclone(CORINDEX, aspath="index")
+	else:
+		gc.gitpull()
+
+
+@click.command()
+@click.option("--local/--remote", default=False)
+def upgrade(local):
+	if not os.path.exists(CORCLISTORAGE):
+		os.mkdir(CORCLISTORAGE)
+	if not local:
+		if not os.path.exists(CORCLISTORAGE+"/cli"):
+			os.chdir(CORCLISTORAGE)
+			gc.gitclone(CORCLI, aspath="cli")
+		os.chdir(CORCLISTORAGE+"/cli")
+		gc.gitpull()
 	os.system("pip install --upgrade .")
 
 @click.command()
@@ -134,6 +164,19 @@ def new_cor_entity(name):
 	gc.gitinit()
 
 
+def search_backend(term, searchtype="QUICK", entity_type=TYPE.MODULE):
+	searchpath = STORAGEMODULES
+	if entity_type == TYPE.MODULE:
+		searchpath = STORAGEMODULES
+	if searchtype == "QUICK":
+		items = os.listdir(searchpath)
+		return list(filter(lambda x: term in x, items))
+	elif searchtype == "FULL":
+		pass
+	else:
+		raise Exception("Invalid search method " + searchtype)
+
+
 def get_type():
 	return None
 
@@ -147,6 +190,7 @@ module.add_command(remove)
 module.add_command(get_module, name="get")
 module.add_command(sync)
 module.add_command(publish)
+module.add_command(module_search, name="search")
 # framework commands
 framework.add_command(newFramework, name="new")
 framework.add_command(remove)
@@ -165,6 +209,7 @@ cor.add_command(framework)
 cor.add_command(module)
 cor.add_command(recipe)
 cor.add_command(sync)
+cor.add_command(update)
 cor.add_command(upgrade)
 cor.add_command(publish)
 cor.add_command(remove)
