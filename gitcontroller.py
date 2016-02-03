@@ -1,8 +1,10 @@
 import os
 import subprocess
 import github
+import click
 
 GITHUB = None
+
 
 def gitclone(url, aspath=None):
 	if aspath is None:
@@ -31,7 +33,7 @@ def gitpull():
 
 
 def gitadd(file):
-	os.system("git add " + file)
+	os.system("git add " + "\"" + file + "\"")
 
 
 def gitcommit(message):
@@ -43,40 +45,53 @@ def isdiff():
 	return diff != ""
 
 
-def gitpush():
-	os.system("git push")
+def gitpush(create_branch=False):
+	if create_branch:
+		os.system("git push -u origin master")
+	else:
+		os.system("git push")
 
 
 def getremote():
 	out = subprocess.check_output(["git", "remote", "-v"], universal_newlines=True)
 	if out == "":
 		return out
-	splits = out.split(" ")
-	print(splits)
-	return splits[1]
+	splits = out.split("\t")[1].split(" ")[0]
+	return splits
 
 
 def addremote(url):
 	os.system("git remote add origin " + url)
 
 
-def github_login(username, password):
+def github_login():
 	global GITHUB
-	GITHUB = github.Github(username, password)
+	if GITHUB is None:
+		username = click.prompt("Please enter your GitHub Username")
+		password = click.prompt("Please enter your GitHub Password", hide_input=True)
+		GITHUB = github.Github(username, password)
+	return GITHUB
+
+
+def github_create_repo(name):
+	github_login().get_user().create_repo(name)
 
 
 def get_cor_index():
-	if GITHUB is not None:
-		for repo in GITHUB.get_user().get_repos():
-			if repo.name == "COR-Index":
-				return repo
-		return None
+	for repo in github_login().get_user().get_repos():
+		if repo.name == "COR-Index":
+			return repo
+	return None
 
 
 def fork_on_github(repo="bahusvel/COR-Index"):
-	if GITHUB is not None:
-		reporepr = GITHUB.get_repo(repo)
-		return GITHUB.get_user().create_fork(reporepr)
+	reporepr = github_login().get_repo(repo)
+	return github_login().get_user().create_fork(reporepr)
+
+
+def github_pull_request(to, username, repo, title):
+	reporepr = github_login().get_repo(to)
+	reporepr.create_pull(title, title, "master", username+":"+repo)
 
 
 def gitupsync(message):

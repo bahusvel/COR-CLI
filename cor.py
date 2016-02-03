@@ -81,8 +81,22 @@ def remove(name):
 
 @click.command()
 def sync():
+	sync_backend()
+
+
+def sync_backend():
 	commited = False
 	if check_for_cor():
+		if gc.getremote() == "":
+			click.secho("You do not have git remote setup", err=True)
+			if click.confirm("Do you want one setup automatically?"):
+				gc.github_login()
+				#gc.github_create_repo() need the name
+			remote = click.prompt("Please enter the url")
+			gc.addremote(remote)
+			gc.gitadd(".")
+			gc.gitcommit("Initlizaing repo")
+			gc.gitpush(create_branch=True)
 		if gc.isdiff():
 			if click.confirm("You have modified the module do you want to commit?"):
 				msg = click.prompt("Please enter a commit message")
@@ -143,25 +157,19 @@ def upgrade(local):
 	else:
 		os.system("pip install --upgrade --editable .")
 
+
 @click.command()
-@click.option("--public-name", prompt=True)
-def publish(public_name):
+def publish():
 	entity_location = os.getcwd()
 	if check_for_cor():
-		if gc.getremote() == "":
-			click.secho("You do not have git remote setup", err=True)
-			remote = click.prompt("Please enter the url")
-			gc.addremote(remote)
-		else:
-			remote = gc.getremote()
-		sync()
-		username = click.prompt("Please enter your GitHub Username")
-		password = click.prompt("Please enter your GitHub Password", hide_input=True)
-		gc.github_login(username, password)
+		username = gc.github_login().get_user().login
+		sync_backend()
+		remote = gc.getremote()
 		localindex = gc.get_cor_index()
 		if localindex is None:
 			localindex = gc.fork_on_github("bahusvel/COR-Index")
 		if not os.path.exists(STORAGE_LOCAL_INDEX):
+			os.chdir(CORCLISTORAGE)
 			gc.gitclone(localindex.clone_url, aspath="localindex")
 		os.chdir(STORAGE_LOCAL_INDEX)
 		gc.gitpull()
@@ -173,13 +181,17 @@ def publish(public_name):
 			prefix = "modules"
 		else:
 			prefix = "modules"
-		public_corfile_path = STORAGE_LOCAL_INDEX+"/" + prefix + "/" + public_name
+		public_name = local_cordict["name"].lower()
+		public_corfile_path = STORAGE_LOCAL_INDEX+"/" + prefix + "/" + public_name + ".json"
 		with open(public_corfile_path, 'w') as public_corfile:
 			json.dump(local_cordict, public_corfile)
 		gc.gitadd(public_corfile_path)
 		gc.gitcommit("Added " + public_name)
 		gc.gitpush()
-
+		try:
+			gc.github_pull_request(localindex.full_name, username, "COR-Index", "Add " + public_name)
+		except Exception:
+			click.secho("Pull request failed, please create one manualy", err=True)
 	else:
 		click.secho("Not a COR-Entity (Framework, Module, Recipe)", err=True)
 
