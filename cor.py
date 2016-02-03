@@ -145,7 +145,14 @@ def upgrade(local):
 @click.command()
 def publish():
 	if check_for_cor():
-		pass
+		if gc.getremote() == "":
+			click.secho("You do not have git remote setup", err=True)
+			remote = click.prompt("Please enter the url")
+			gc.addremote(remote)
+		else:
+			remote = gc.getremote()
+		
+
 	else:
 		click.secho("Not a COR-Entity (Framework, Module, Recipe)", err=True)
 
