@@ -83,6 +83,3 @@ def gitupsync(message):
 	os.system("git add .")
 	os.system("git commit -a -m \"" + message + "\"")
 
-github_login("bahusvel", "Dl136136136")
-print(get_cor_index().clone_url)
-
