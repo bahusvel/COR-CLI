@@ -1,5 +1,8 @@
 import os
 import subprocess
+import github
+
+GITHUB = None
 
 def gitclone(url, aspath=None):
 	if aspath is None:
@@ -27,6 +30,14 @@ def gitpull():
 	os.system("git pull")
 
 
+def gitadd(file):
+	os.system("git add " + file)
+
+
+def gitcommit(message):
+	os.system("git commit -a -m " + "\"" + message + "\"")
+
+
 def isdiff():
 	diff = subprocess.check_output(["git", "diff", "--shortstat"], universal_newlines=True)
 	return diff != ""
@@ -49,6 +60,29 @@ def addremote(url):
 	os.system("git remote add origin " + url)
 
 
+def github_login(username, password):
+	global GITHUB
+	GITHUB = github.Github(username, password)
+
+
+def get_cor_index():
+	if GITHUB is not None:
+		for repo in GITHUB.get_user().get_repos():
+			if repo.name == "COR-Index":
+				return repo
+		return None
+
+
+def fork_on_github(repo="bahusvel/COR-Index"):
+	if GITHUB is not None:
+		reporepr = GITHUB.get_repo(repo)
+		return GITHUB.get_user().create_fork(reporepr)
+
+
 def gitupsync(message):
 	os.system("git add .")
 	os.system("git commit -a -m \"" + message + "\"")
+
+github_login("bahusvel", "Dl136136136")
+print(get_cor_index().clone_url)
+

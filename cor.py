@@ -16,6 +16,7 @@ CORCLI = "https://github.com/bahusvel/COR-CLI.git"
 CORINDEX = "https://github.com/bahusvel/COR-Index.git"
 CORCLISTORAGE = click.get_app_dir("COR CLI")
 STORAGEINDEX = CORCLISTORAGE+"/index"
+STORAGE_LOCAL_INDEX = CORCLISTORAGE+"/localindex"
 STORAGEMODULES = STORAGEINDEX+"/modules"
 
 
@@ -143,7 +144,9 @@ def upgrade(local):
 		os.system("pip install --upgrade --editable .")
 
 @click.command()
-def publish():
+@click.option("--public-name", prompt=True)
+def publish(public_name):
+	entity_location = os.getcwd()
 	if check_for_cor():
 		if gc.getremote() == "":
 			click.secho("You do not have git remote setup", err=True)
@@ -151,10 +154,35 @@ def publish():
 			gc.addremote(remote)
 		else:
 			remote = gc.getremote()
-		
+		sync()
+		username = click.prompt("Please enter your GitHub Username")
+		password = click.prompt("Please enter your GitHub Password", hide_input=True)
+		gc.github_login(username, password)
+		localindex = gc.get_cor_index()
+		if localindex is None:
+			localindex = gc.fork_on_github("bahusvel/COR-Index")
+		if not os.path.exists(STORAGE_LOCAL_INDEX):
+			gc.gitclone(localindex.clone_url, aspath="localindex")
+		os.chdir(STORAGE_LOCAL_INDEX)
+		gc.gitpull()
+		# create corfile here
+		with open(entity_location+"/.cor/corfile.json", 'r') as local_corfile:
+			local_cordict = json.loads(local_corfile.read())
+			local_cordict["repo"] = remote
+		if local_cordict["type"] == "MODULE":
+			prefix = "modules"
+		else:
+			prefix = "modules"
+		public_corfile_path = STORAGE_LOCAL_INDEX+"/" + prefix + "/" + public_name
+		with open(public_corfile_path, 'w') as public_corfile:
+			json.dump(local_cordict, public_corfile)
+		gc.gitadd(public_corfile_path)
+		gc.gitcommit("Added " + public_name)
+		gc.gitpush()
 
 	else:
 		click.secho("Not a COR-Entity (Framework, Module, Recipe)", err=True)
+
 
 @click.command()
 @click.option("--url", prompt=True)
