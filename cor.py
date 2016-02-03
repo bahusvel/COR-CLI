@@ -44,7 +44,7 @@ def recipe():
 
 @click.command()
 @click.option('--name', prompt=True)
-def newModule(name):
+def new_module(name):
 	new_cor_entity(name)
 	language = click.prompt("Please enter the language ", type=click.Choice(list(KNOWNLANGUAGES.keys()) + ["OTHER"]))
 	if language == "OTHER":
@@ -58,7 +58,7 @@ def newModule(name):
 
 @click.command()
 @click.option('--language', prompt=True)
-def newFramework(language):
+def new_framework(language):
 	name = "COR-Framework-" + language
 	new_cor_entity(name)
 	gc.gitaddsubmodule(CORFRAMEWORK)
@@ -66,7 +66,7 @@ def newFramework(language):
 
 @click.command()
 @click.option('--name', prompt=True)
-def newRecipe(name):
+def new_recipe(name):
 	new_cor_entity(name)
 	# initialize .cor directory
 
@@ -84,18 +84,6 @@ def remove(name):
 def sync():
 	sync_backend()
 
-
-def parse_corfile(path):
-	ppath = os.getcwd()
-	os.chdir(path)
-	if check_for_cor():
-		with open(os.getcwd() + "/.cor/corfile.json", 'r') as local_corfile:
-			local_cordict = json.loads(local_corfile.read())
-		os.chdir(ppath)
-		return local_cordict
-	os.chdir(ppath)
-
-
 def sync_backend():
 	commited = False
 	if check_for_cor():
@@ -112,7 +100,7 @@ def sync_backend():
 			click.secho("You do not have git remote setup", err=True)
 			if click.confirm("Do you want one setup automatically?"):
 				gc.github_login()
-				name = parse_corfile(os.getcwd())["name"]
+				name = read_corfile(os.getcwd() + "/.cor/corfile.json")["name"]
 				remote = gc.github_create_repo(name).clone_url
 			else:
 				click.secho("You will have to create a repository manually and provide the clone url")
@@ -133,9 +121,8 @@ def module_search(search_term, searchmethod):
 		searchmethod = "QUICK"
 	modules = search_backend(search_term, entity_type=TYPE.MODULE, searchtype=searchmethod)
 	for module in modules:
-		with open(STORAGEMODULES+"/"+module, "r") as modfile:
-			moddesc = json.loads(modfile.read())
-			click.secho("{} @ {}".format(moddesc["name"], moddesc["repo"]))
+		cordict = read_corfile(STORAGEMODULES+"/"+module)
+		click.secho("{} @ {}".format(cordict["name"], cordict["repo"]))
 
 
 @click.command()
@@ -189,7 +176,7 @@ def publish():
 		os.chdir(STORAGE_LOCAL_INDEX)
 		gc.gitpull()
 		# create corfile here
-		local_cordict = parse_corfile(entity_location)
+		local_cordict = read_corfile(entity_location + "/.cor/corfile.json")
 		local_cordict["repo"] = remote
 		if local_cordict["type"] == "MODULE":
 			prefix = "modules"
@@ -197,8 +184,7 @@ def publish():
 			prefix = "modules"
 		public_name = local_cordict["name"].lower()
 		public_corfile_path = STORAGE_LOCAL_INDEX+"/" + prefix + "/" + public_name + ".json"
-		with open(public_corfile_path, 'w') as public_corfile:
-			json.dump(local_cordict, public_corfile)
+		write_corfile(local_cordict, public_corfile_path)
 		gc.gitadd(public_corfile_path)
 		gc.gitcommit("Added " + public_name)
 		gc.gitpush()
@@ -243,7 +229,17 @@ def create_corfile(name, type, language):
 	if check_for_cor():
 		cordict = {"name": name, "type": type, "language": language}
 		cdir = os.getcwd()
-		with open(cdir+"/.cor/corfile.json", 'w') as corfile:
+		write_corfile(cordict, cdir+"/.cor/corfile.json")
+
+
+def read_corfile(path_to_corfile):
+	with open(path_to_corfile, 'r') as local_corfile:
+			local_cordict = json.loads(local_corfile.read())
+	return local_cordict
+
+
+def write_corfile(cordict, path_to_corfile):
+	with open(path_to_corfile, 'w') as corfile:
 			json.dump(cordict, corfile)
 
 
@@ -268,20 +264,20 @@ def check_for_cor():
 	return os.path.exists(".cor")
 
 # module commands
-module.add_command(newModule, name="new")
+module.add_command(new_module, name="new")
 module.add_command(remove)
 module.add_command(get_module, name="get")
 module.add_command(sync)
 module.add_command(publish)
 module.add_command(module_search, name="search")
 # framework commands
-framework.add_command(newFramework, name="new")
+framework.add_command(new_framework, name="new")
 framework.add_command(remove)
 framework.add_command(sync)
 framework.add_command(publish)
 framework.add_command(remove)
 # recipe commands
-recipe.add_command(newRecipe, name="new")
+recipe.add_command(new_recipe, name="new")
 recipe.add_command(remove)
 recipe.add_command(get_module)
 recipe.add_command(sync)
