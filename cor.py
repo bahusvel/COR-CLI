@@ -20,14 +20,14 @@ STORAGEMODULES = STORAGEINDEX+"/modules"
 
 
 class TYPE:
-	MODULE = 1
-	RECIPE = 2
-	FRAMEWORK = 3
-	UNKNOWN = 4
+	MODULE = "MODULE"
+	RECIPE = "RECIPE"
+	FRAMEWORK = "FRAMEWORK"
+	UNKNOWN = "UNKNOWN"
 
 @click.group()
 def cor():
-	click.echo("Welcome to COR-CLI")
+	click.echo("Welcome to COR-CLI!")
 
 @click.group()
 def module():
@@ -43,19 +43,16 @@ def recipe():
 
 @click.command()
 @click.option('--name', prompt=True)
-@click.option('--language')
-@click.option('--language-url')
-def newModule(name, language, language_url):
+def newModule(name):
 	new_cor_entity(name)
-	lurl = language_url
-	while lurl is None:
-		if language in KNOWNLANGUAGES:
-			lurl = KNOWNLANGUAGES[language]
-			break
-		lurl = click.prompt("Please enter language-url")
-	gc.gitaddsubmodule(lurl, pathname="cor")
+	language = click.prompt("Please enter the language ", type=click.Choice(list(KNOWNLANGUAGES.keys()) + ["OTHER"]))
+	if language == "OTHER":
+		language_url = click.prompt("Enter the url for language repo instead: ")
+	else:
+		language_url = KNOWNLANGUAGES[language]
+	gc.gitaddsubmodule(language_url, pathname="cor")
 	# initialize .cor directory
-
+	create_corfile(name, TYPE.MODULE, language_url)
 
 @click.command()
 @click.option('--language', prompt=True)
@@ -112,13 +109,20 @@ def module_search(name, searchmethod):
 
 
 @click.command()
-def update():
+@click.option("--new-index")
+def update(new_index):
+	if new_index is not None:
+		shutil.rmtree(STORAGEINDEX)
 	if not os.path.exists(CORCLISTORAGE):
 		os.mkdir(CORCLISTORAGE)
-	if not os.path.exists(CORCLISTORAGE+"/index"):
+	if not os.path.exists(STORAGEINDEX):
 		os.chdir(CORCLISTORAGE)
-		gc.gitclone(CORINDEX, aspath="index")
+		if new_index is not None:
+			gc.gitclone(new_index, aspath="index")
+		else:
+			gc.gitclone(CORINDEX, aspath="index")
 	else:
+		os.chdir(STORAGEINDEX)
 		gc.gitpull()
 
 
@@ -133,7 +137,10 @@ def upgrade(local):
 			gc.gitclone(CORCLI, aspath="cli")
 		os.chdir(CORCLISTORAGE+"/cli")
 		gc.gitpull()
-	os.system("pip install --upgrade .")
+	if not local:
+		os.system("pip install --upgrade .")
+	else:
+		os.system("pip install --upgrade --editable .")
 
 @click.command()
 def publish():
@@ -158,10 +165,25 @@ def git(commands):
 
 
 def new_cor_entity(name):
-	os.mkdir(name)
+	if not os.path.exists(name):
+		os.mkdir(name)
 	os.chdir(name)
-	os.mkdir(".cor")
-	gc.gitinit()
+	if not check_for_cor():
+		os.mkdir(".cor")
+	if not git_exists():
+		gc.gitinit()
+
+
+def git_exists():
+	return os.path.exists(".git")
+
+
+def create_corfile(name, type, language):
+	if check_for_cor():
+		cordict = {"name": name, "type": type, "language": language}
+		cdir = os.getcwd()
+		with open(cdir+"/.cor/corfile.json", 'w') as corfile:
+			json.dump(cordict, corfile)
 
 
 def search_backend(term, searchtype="QUICK", entity_type=TYPE.MODULE):
