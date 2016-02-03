@@ -51,7 +51,8 @@ def newModule(name):
 		language_url = click.prompt("Enter the url for language repo instead: ")
 	else:
 		language_url = KNOWNLANGUAGES[language]
-	gc.gitaddsubmodule(language_url, pathname="cor")
+	if not os.path.exists("cor"):
+		gc.gitaddsubmodule(language_url, pathname="cor")
 	# initialize .cor directory
 	create_corfile(name, TYPE.MODULE, language_url)
 
@@ -84,39 +85,53 @@ def sync():
 	sync_backend()
 
 
+def parse_corfile(path):
+	ppath = os.getcwd()
+	os.chdir(path)
+	if check_for_cor():
+		with open(os.getcwd() + "/.cor/corfile.json", 'r') as local_corfile:
+			local_cordict = json.loads(local_corfile.read())
+		os.chdir(ppath)
+		return local_cordict
+	os.chdir(ppath)
+
+
 def sync_backend():
 	commited = False
 	if check_for_cor():
-		if gc.getremote() == "":
+		if gc.getremote() != "":
+			if gc.isdiff():
+				if click.confirm("You have modified the module do you want to commit?"):
+					msg = click.prompt("Please enter a commit message")
+					gc.gitupsync(msg)
+					commited = True
+			gc.gitpull()
+			if commited:
+				gc.gitpush()
+		else:
 			click.secho("You do not have git remote setup", err=True)
 			if click.confirm("Do you want one setup automatically?"):
 				gc.github_login()
-				#gc.github_create_repo() need the name
-			remote = click.prompt("Please enter the url")
+				name = parse_corfile(os.getcwd())["name"]
+				remote = gc.github_create_repo(name).clone_url
+			else:
+				click.secho("You will have to create a repository manually and provide the clone url")
+				remote = click.prompt("Please enter the url")
 			gc.addremote(remote)
 			gc.gitadd(".")
 			gc.gitcommit("Initlizaing repo")
 			gc.gitpush(create_branch=True)
-		if gc.isdiff():
-			if click.confirm("You have modified the module do you want to commit?"):
-				msg = click.prompt("Please enter a commit message")
-				gc.gitupsync(msg)
-				commited = True
-		gc.gitpull()
-		if commited:
-			gc.gitpush()
-
 	else:
 		click.secho("Not a COR-Entity (Framework, Module, Recipe)", err=True)
 
 
 @click.command()
-@click.option("--name", prompt=True)
 @click.option("--searchmethod", type=click.Choice(["QUICK", "FULL"]))
-def module_search(name, searchmethod):
+@click.argument("search_term")
+def module_search(search_term, searchmethod):
 	if searchmethod is None:
 		searchmethod = "QUICK"
-	modules = search_backend(name, entity_type=TYPE.MODULE, searchtype=searchmethod)
+	modules = search_backend(search_term, entity_type=TYPE.MODULE, searchtype=searchmethod)
 	for module in modules:
 		with open(STORAGEMODULES+"/"+module, "r") as modfile:
 			moddesc = json.loads(modfile.read())
@@ -174,9 +189,8 @@ def publish():
 		os.chdir(STORAGE_LOCAL_INDEX)
 		gc.gitpull()
 		# create corfile here
-		with open(entity_location+"/.cor/corfile.json", 'r') as local_corfile:
-			local_cordict = json.loads(local_corfile.read())
-			local_cordict["repo"] = remote
+		local_cordict = parse_corfile(entity_location)
+		local_cordict["repo"] = remote
 		if local_cordict["type"] == "MODULE":
 			prefix = "modules"
 		else:
