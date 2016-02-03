@@ -36,6 +36,19 @@ def gitpush():
 	os.system("git push")
 
 
+def getremote():
+	out = subprocess.check_output(["git", "remote", "-v"], universal_newlines=True)
+	if out == "":
+		return out
+	splits = out.split(" ")
+	print(splits)
+	return splits[1]
+
+
+def addremote(url):
+	os.system("git remote add origin " + url)
+
+
 def gitupsync(message):
 	os.system("git add .")
 	os.system("git commit -a -m \"" + message + "\"")
