@@ -43,6 +43,24 @@ def recipe():
 	pass
 
 @click.command()
+@click.option("--name")
+@click.option("--url")
+def get_module(name, url):
+	if name is None and url is None:
+		name = click.prompt("Enter the module name")
+	if name is not None and url is None:
+		file = STORAGEINDEX+"/modules/"+name+".json"
+		if os.path.exists(file):
+			cordict = read_corfile(file)
+			url = cordict["repo"]
+		else:
+			click.secho("The module you requested is not in the index", err=True)
+			url = click.prompt("Please enter the url for the module")
+	if url is not None:
+		gc.gitclone(url)
+
+
+@click.command()
 @click.option('--name', prompt=True)
 def new_module(name):
 	new_cor_entity(name)
