@@ -1,10 +1,10 @@
 import os
 import shutil
-import json
 
 import click
 
 import gitcontroller as gc
+from fscontroller import read_corfile, write_corfile, new_cor_entity, check_for_cor
 
 CORFRAMEWORK = "https://github.com/bahusvel/COR-Framework"
 CORCLI = "https://github.com/bahusvel/COR-CLI.git"
@@ -234,31 +234,6 @@ def test():
 	print(list_type(TYPE.FRAMEWORK))
 
 
-def read_corfile(path_to_corfile):
-	with open(path_to_corfile, 'r') as local_corfile:
-			local_cordict = json.loads(local_corfile.read())
-	return local_cordict
-
-
-def write_corfile(cordict, path_to_corfile):
-	with open(path_to_corfile, 'w') as corfile:
-			json.dump(cordict, corfile)
-
-
-def new_cor_entity(name):
-	if not os.path.exists(name):
-		os.mkdir(name)
-	os.chdir(name)
-	if not check_for_cor():
-		os.mkdir(".cor")
-	if not git_exists():
-		gc.gitinit()
-
-
-def git_exists():
-	return os.path.exists(".git")
-
-
 def module_corfile(name, language_url):
 	if check_for_cor():
 		cordict = {"name": name, "type": TYPE.MODULE, "language": language_url}
@@ -271,10 +246,6 @@ def framework_corfile(name):
 		cordict = {"name": name, "type": TYPE.FRAMEWORK}
 		cdir = os.getcwd()
 		write_corfile(cordict, cdir + "/.cor/corfile.json")
-
-
-def check_for_cor():
-	return os.path.exists(".cor")
 
 
 def search_backend(term, searchtype="QUICK", entity_type=TYPE.MODULE):
@@ -301,7 +272,7 @@ def list_type(entity_type):
 def available_languages():
 	language_dict = {}
 	for language in list_type(TYPE.FRAMEWORK):
-		cordict = read_corfile(STORAGEFRAMEWORKS+"/"+language)
+		cordict = read_corfile(STORAGEFRAMEWORKS + "/" + language)
 		language_dict[cordict["name"]] = cordict["repo"]
 	return language_dict
 
