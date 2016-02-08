@@ -1,15 +1,10 @@
-import click
-import fscontroller as fs
-import gitcontroller as gc
 import os
 import shutil
 import json
 
-KNOWNLANGUAGES = {
-	"Swift": "https://github.com/bahusvel/COR-Framework-Swift.git",
-	"Python": "https://github.com/bahusvel/COR-Framework-Python.git",
-	"GO": "https://github.com/bahusvel/COR-Framework-GO"
-}
+import click
+
+import gitcontroller as gc
 
 CORFRAMEWORK = "https://github.com/bahusvel/COR-Framework"
 CORCLI = "https://github.com/bahusvel/COR-CLI.git"
@@ -18,6 +13,7 @@ CORCLISTORAGE = click.get_app_dir("COR CLI")
 STORAGEINDEX = CORCLISTORAGE+"/index"
 STORAGE_LOCAL_INDEX = CORCLISTORAGE+"/localindex"
 STORAGEMODULES = STORAGEINDEX+"/modules"
+STORAGEFRAMEWORKS = STORAGEINDEX+"/frameworks"
 
 
 class TYPE:
@@ -64,23 +60,26 @@ def get_module(name, url):
 @click.option('--name', prompt=True)
 def new_module(name):
 	new_cor_entity(name)
-	language = click.prompt("Please enter the language ", type=click.Choice(list(KNOWNLANGUAGES.keys()) + ["OTHER"]))
+	languages = available_languages()
+	language = click.prompt("Please enter the language ", type=click.Choice(list(languages.keys()) + ["OTHER"]))
 	if language == "OTHER":
 		language_url = click.prompt("Enter the url for language repo instead: ")
 	else:
-		language_url = KNOWNLANGUAGES[language]
+		language_url = languages[language]
 	if not os.path.exists("cor"):
 		gc.gitaddsubmodule(language_url, pathname="cor")
 	# initialize .cor directory
-	create_corfile(name, TYPE.MODULE, language_url)
+	module_corfile(name, language_url)
 
 @click.command()
 @click.option('--language', prompt=True)
 def new_framework(language):
 	name = "COR-Framework-" + language
 	new_cor_entity(name)
-	gc.gitaddsubmodule(CORFRAMEWORK)
+	if not os.path.exists("COR-Framework"):
+		gc.gitaddsubmodule(CORFRAMEWORK)
 	# initialize .cor directory
+	framework_corfile(name)
 
 @click.command()
 @click.option('--name', prompt=True)
@@ -140,7 +139,7 @@ def module_search(search_term, searchmethod):
 		searchmethod = "QUICK"
 	modules = search_backend(search_term, entity_type=TYPE.MODULE, searchtype=searchmethod)
 	for module in modules:
-		cordict = read_corfile(STORAGEMODULES+"/"+module)
+		cordict = read_corfile(STORAGEMODULES + "/" + module)
 		click.secho("{} @ {}".format(cordict["name"], cordict["repo"]))
 
 
@@ -199,8 +198,10 @@ def publish():
 		local_cordict["repo"] = remote
 		if local_cordict["type"] == "MODULE":
 			prefix = "modules"
+		elif local_cordict["type"] == "FRAMEWORK":
+			prefix = "frameworks"
 		else:
-			prefix = "modules"
+			raise Exception(local_cordict["type"] + "is an invalid type")
 		public_name = local_cordict["name"].lower()
 		public_corfile_path = STORAGE_LOCAL_INDEX+"/" + prefix + "/" + public_name + ".json"
 		write_corfile(local_cordict, public_corfile_path)
@@ -214,13 +215,12 @@ def publish():
 	else:
 		click.secho("Not a COR-Entity (Framework, Module, Recipe)", err=True)
 
-
 @click.command()
 @click.option("--url", prompt=True)
 def get_module(url):
-	if get_type() == TYPE.RECIPE:
+	#if get_type() == TYPE.RECIPE:
 		# add module to recipe correctly
-		pass
+	#	pass
 	gc.gitclone(url)
 
 
@@ -228,6 +228,21 @@ def get_module(url):
 @click.argument("commands", nargs=-1)
 def git(commands):
 	os.system("git " + " ".join(commands))
+
+@click.command()
+def test():
+	print(list_type(TYPE.FRAMEWORK))
+
+
+def read_corfile(path_to_corfile):
+	with open(path_to_corfile, 'r') as local_corfile:
+			local_cordict = json.loads(local_corfile.read())
+	return local_cordict
+
+
+def write_corfile(cordict, path_to_corfile):
+	with open(path_to_corfile, 'w') as corfile:
+			json.dump(cordict, corfile)
 
 
 def new_cor_entity(name):
@@ -244,30 +259,27 @@ def git_exists():
 	return os.path.exists(".git")
 
 
-def create_corfile(name, type, language):
+def module_corfile(name, language_url):
 	if check_for_cor():
-		cordict = {"name": name, "type": type, "language": language}
+		cordict = {"name": name, "type": TYPE.MODULE, "language": language_url}
 		cdir = os.getcwd()
-		write_corfile(cordict, cdir+"/.cor/corfile.json")
+		write_corfile(cordict, cdir + "/.cor/corfile.json")
 
 
-def read_corfile(path_to_corfile):
-	with open(path_to_corfile, 'r') as local_corfile:
-			local_cordict = json.loads(local_corfile.read())
-	return local_cordict
+def framework_corfile(name):
+	if check_for_cor():
+		cordict = {"name": name, "type": TYPE.FRAMEWORK}
+		cdir = os.getcwd()
+		write_corfile(cordict, cdir + "/.cor/corfile.json")
 
 
-def write_corfile(cordict, path_to_corfile):
-	with open(path_to_corfile, 'w') as corfile:
-			json.dump(cordict, corfile)
+def check_for_cor():
+	return os.path.exists(".cor")
 
 
 def search_backend(term, searchtype="QUICK", entity_type=TYPE.MODULE):
-	searchpath = STORAGEMODULES
-	if entity_type == TYPE.MODULE:
-		searchpath = STORAGEMODULES
 	if searchtype == "QUICK":
-		items = os.listdir(searchpath)
+		items = list_type(entity_type)
 		return list(filter(lambda x: term in x, items))
 	elif searchtype == "FULL":
 		pass
@@ -275,12 +287,23 @@ def search_backend(term, searchtype="QUICK", entity_type=TYPE.MODULE):
 		raise Exception("Invalid search method " + searchtype)
 
 
-def get_type():
-	return None
+def list_type(entity_type):
+	if entity_type == TYPE.MODULE:
+		searchpath = STORAGEMODULES
+	elif entity_type == TYPE.FRAMEWORK:
+		searchpath = STORAGEFRAMEWORKS
+	else:
+		raise Exception(str(entity_type) + "is not supported")
+	items = os.listdir(searchpath)
+	return list(filter(lambda x: x.endswith(".json"), items))
 
 
-def check_for_cor():
-	return os.path.exists(".cor")
+def available_languages():
+	language_dict = {}
+	for language in list_type(TYPE.FRAMEWORK):
+		cordict = read_corfile(STORAGEFRAMEWORKS+"/"+language)
+		language_dict[cordict["name"]] = cordict["repo"]
+	return language_dict
 
 # module commands
 module.add_command(new_module, name="new")
@@ -312,6 +335,7 @@ cor.add_command(upgrade)
 cor.add_command(publish)
 cor.add_command(remove)
 cor.add_command(git)
+cor.add_command(test)
 
 if __name__ == '__main__':
 	cor()
