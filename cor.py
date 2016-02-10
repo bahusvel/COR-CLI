@@ -119,7 +119,7 @@ def sync_backend():
 			if click.confirm("Do you want one setup automatically?"):
 				gc.github_login()
 				name = read_corfile(os.getcwd() + "/.cor/corfile.json")["name"]
-				remote = gc.github_create_repo(name).clone_url  # breaks sometimes, maybe doesnt return repo properly
+				remote = gc.github_create_repo(name).clone_url
 			else:
 				click.secho("You will have to create a repository manually and provide the clone url")
 				remote = click.prompt("Please enter the url")

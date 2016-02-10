@@ -74,7 +74,7 @@ def github_login():
 
 
 def github_create_repo(name):
-	github_login().get_user().create_repo(name)
+	return github_login().get_user().create_repo(name)
 
 
 def get_cor_index():
