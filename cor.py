@@ -2,9 +2,9 @@ import os
 import shutil
 
 import click
-
+import fscontroller as fc
 import gitcontroller as gc
-from fscontroller import read_corfile, write_corfile, new_cor_entity, check_for_cor
+
 
 CORFRAMEWORK = "https://github.com/bahusvel/COR-Framework"
 CORCLI = "https://github.com/bahusvel/COR-CLI.git"
@@ -47,7 +47,7 @@ def get_module(name, url):
 	if name is not None and url is None:
 		file = STORAGEINDEX+"/modules/"+name+".json"
 		if os.path.exists(file):
-			cordict = read_corfile(file)
+			cordict = fc.read_corfile(file)
 			url = cordict["repo"]
 		else:
 			click.secho("The module you requested is not in the index", err=True)
@@ -59,7 +59,7 @@ def get_module(name, url):
 @click.command()
 @click.option('--name', prompt=True)
 def new_module(name):
-	new_cor_entity(name)
+	fc.new_cor_entity(name)
 	languages = available_languages()
 	language = click.prompt("Please enter the language ", type=click.Choice(list(languages.keys()) + ["OTHER"]))
 	if language == "OTHER":
@@ -75,7 +75,7 @@ def new_module(name):
 @click.option('--language', prompt=True)
 def new_framework(language):
 	name = "COR-Framework-" + language
-	new_cor_entity(name)
+	fc.new_cor_entity(name)
 	if not os.path.exists("COR-Framework"):
 		gc.gitaddsubmodule(CORFRAMEWORK)
 	# initialize .cor directory
@@ -84,13 +84,13 @@ def new_framework(language):
 @click.command()
 @click.option('--name', prompt=True)
 def new_recipe(name):
-	new_cor_entity(name)
+	fc.new_cor_entity(name)
 	# initialize .cor directory
 
 @click.command()
 @click.option("--name")
 def remove(name):
-	if name is None and check_for_cor():
+	if name is None and fc.check_for_cor():
 		name = os.getcwd()
 	elif name is None:
 		name = click.prompt("Name")
@@ -104,7 +104,7 @@ def sync():
 
 def sync_backend():
 	commited = False
-	if check_for_cor():
+	if fc.check_for_cor():
 		if gc.getremote() != "":
 			if gc.isdiff():
 				if click.confirm("You have modified the module do you want to commit?"):
@@ -118,7 +118,7 @@ def sync_backend():
 			click.secho("You do not have git remote setup", err=True)
 			if click.confirm("Do you want one setup automatically?"):
 				gc.github_login()
-				name = read_corfile(os.getcwd() + "/.cor/corfile.json")["name"]
+				name = fc.read_corfile(os.getcwd() + "/.cor/corfile.json")["name"]
 				remote = gc.github_create_repo(name).clone_url  # breaks sometimes, maybe doesnt return repo properly
 			else:
 				click.secho("You will have to create a repository manually and provide the clone url")
@@ -139,7 +139,7 @@ def module_search(search_term, searchmethod):
 		searchmethod = "QUICK"
 	modules = search_backend(search_term, entity_type=TYPE.MODULE, searchtype=searchmethod)
 	for module in modules:
-		cordict = read_corfile(STORAGEMODULES + "/" + module)
+		cordict = fc.read_corfile(STORAGEMODULES + "/" + module)
 		click.secho("{} @ {}".format(cordict["name"], cordict["repo"]))
 
 
@@ -181,7 +181,7 @@ def upgrade(local):
 @click.command()
 def publish():
 	entity_location = os.getcwd()
-	if check_for_cor():
+	if fc.check_for_cor():
 		username = gc.github_login().get_user().login
 		sync_backend()
 		remote = gc.getremote()
@@ -194,7 +194,7 @@ def publish():
 		os.chdir(STORAGE_LOCAL_INDEX)
 		gc.gitpull()
 		# create corfile here
-		local_cordict = read_corfile(entity_location + "/.cor/corfile.json")
+		local_cordict = fc.read_corfile(entity_location + "/.cor/corfile.json")
 		local_cordict["repo"] = remote
 		if local_cordict["type"] == "MODULE":
 			prefix = "modules"
@@ -204,7 +204,7 @@ def publish():
 			raise Exception(local_cordict["type"] + "is an invalid type")
 		public_name = local_cordict["name"].lower()
 		public_corfile_path = STORAGE_LOCAL_INDEX+"/" + prefix + "/" + public_name + ".json"
-		write_corfile(local_cordict, public_corfile_path)
+		fc.write_corfile(local_cordict, public_corfile_path)
 		gc.gitadd(public_corfile_path)
 		gc.gitcommit("Added " + public_name)
 		gc.gitpush()
@@ -235,17 +235,17 @@ def test():
 
 
 def module_corfile(name, language_url):
-	if check_for_cor():
+	if fc.check_for_cor():
 		cordict = {"name": name, "type": TYPE.MODULE, "language": language_url}
 		cdir = os.getcwd()
-		write_corfile(cordict, cdir + "/.cor/corfile.json")
+		fc.write_corfile(cordict, cdir + "/.cor/corfile.json")
 
 
 def framework_corfile(name):
-	if check_for_cor():
+	if fc.check_for_cor():
 		cordict = {"name": name, "type": TYPE.FRAMEWORK}
 		cdir = os.getcwd()
-		write_corfile(cordict, cdir + "/.cor/corfile.json")
+		fc.write_corfile(cordict, cdir + "/.cor/corfile.json")
 
 
 def search_backend(term, searchtype="QUICK", entity_type=TYPE.MODULE):
@@ -272,7 +272,7 @@ def list_type(entity_type):
 def available_languages():
 	language_dict = {}
 	for language in list_type(TYPE.FRAMEWORK):
-		cordict = read_corfile(STORAGEFRAMEWORKS + "/" + language)
+		cordict = fc.read_corfile(STORAGEFRAMEWORKS + "/" + language)
 		language_dict[cordict["name"]] = cordict["repo"]
 	return language_dict
 
