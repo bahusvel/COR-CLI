@@ -3,7 +3,7 @@ import os
 import shutil
 
 import click
-import gitcontroller as gc
+import cor_gitcontroller as gc
 
 
 CORFRAMEWORK = "https://github.com/bahusvel/COR-Framework"
