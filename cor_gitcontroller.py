@@ -2,6 +2,7 @@ import os
 import subprocess
 import github
 import click
+import cor
 
 GITHUB = None
 
@@ -67,8 +68,12 @@ def addremote(url):
 def github_login():
 	global GITHUB
 	if GITHUB is None:
-		username = click.prompt("Please enter your GitHub Username")
-		password = click.prompt("Please enter your GitHub Password", hide_input=True)
+		if cor.settings_dict["store_github_account"]:
+			username = cor.settings_dict["github_username"]
+			password = cor.settings_dict["github_password"]
+		else:
+			username = click.prompt("Please enter your GitHub Username")
+			password = click.prompt("Please enter your GitHub Password", hide_input=True)
 		GITHUB = github.Github(username, password)
 	return GITHUB
 

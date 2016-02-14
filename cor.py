@@ -9,12 +9,15 @@ import cor_gitcontroller as gc
 CORFRAMEWORK = "https://github.com/bahusvel/COR-Framework"
 CORCLI = "https://github.com/bahusvel/COR-CLI.git"
 CORINDEX = "https://github.com/bahusvel/COR-Index.git"
+CORFRAMEWORK_REPO_ID = "bahusvel/COR-Framework"
+
 CORCLISTORAGE = click.get_app_dir("COR CLI")
 STORAGEINDEX = CORCLISTORAGE+"/index"
 STORAGE_LOCAL_INDEX = CORCLISTORAGE+"/localindex"
 STORAGEMODULES = STORAGEINDEX+"/modules"
 STORAGEFRAMEWORKS = STORAGEINDEX+"/frameworks"
-
+STORAGESETTINGS = CORCLISTORAGE+"/settings.json"
+settings_dict = {}
 
 class TYPE:
 	MODULE = "MODULE"
@@ -24,7 +27,30 @@ class TYPE:
 
 @click.group()
 def cor():
+	global settings_dict
 	click.echo("Welcome to COR-CLI!")
+	if not os.path.exists(STORAGESETTINGS):
+		open(STORAGESETTINGS, "w").close()
+	with open(STORAGESETTINGS, "r+") as settings_file:
+		fcontents = settings_file.read()
+		if fcontents is not "":
+			settings_dict = json.loads(fcontents)
+		if "store_github_account" not in settings_dict:
+			click.secho("COR-CLI uses and regularly interacts with GitHub, a lot of its functionality depends on this integration." + ""
+			"Allow it to remember your github credentials so that you wont be nagged to enter them every time.")
+			settings_dict["store_github_account"] = click.confirm("Would you like the system to remember your github credentials? ", default=True)
+		if settings_dict["store_github_account"] and "github_username" not in settings_dict:
+			settings_dict["github_username"] = click.prompt("Please enter your GitHub Username")
+			settings_dict["github_password"] = click.prompt("Please enter your GitHub Password", hide_input=True)
+		if settings_dict["store_github_account"] and "corframework_stared" not in settings_dict:
+			try:
+				gc.github_star(gc.github_get_repo_by_name(CORFRAMEWORK_REPO_ID))
+				settings_dict["corframework_stared"] = True
+			except Exception:
+				click.secho("Failed starring COR-Framework")
+		#write the settings back
+		settings_file.seek(0)
+		json.dump(settings_dict, settings_file)
 
 @click.group()
 def module():
